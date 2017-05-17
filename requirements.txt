@@ -1,0 +1,5 @@
+gmusicapi
+colorama
+requests
+tqdm
+eyed3
