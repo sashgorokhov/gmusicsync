@@ -3,7 +3,7 @@ from distutils.core import setup
 with open('README.rst') as readme:
     long_description = readme.read()
 
-VERSION = '0.1'
+VERSION = '0.1.1'
 
 setup(
     install_requires=['gmusicapi', 'colorama', 'requests', 'tqdm', 'eyed3'],
