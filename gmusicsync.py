@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
 
+import argparse
+import logging
 import os
 import re
 import sys
-import argparse
 
+import colorama
 import eyed3
 import gmusicapi
-import colorama
 import requests
 import tqdm
+
+eyed3_logger = logging.getLogger('eyed3')
+eyed3_logger.propagate = False
+eyed3_logger.addHandler(logging.NullHandler())
+eyed3_logger.setLevel(logging.NOTSET)
 
 
 def print_error(msg):
@@ -33,12 +39,15 @@ if not args.password:
     print_error('password is empty or not set')
     exit(-1)
 
+print('Trying to login...', end='\t')
 api = gmusicapi.Mobileclient(debug_logging=False)
 login_status = api.login(email=args.email, password=args.password, android_id=api.FROM_MAC_ADDRESS)
 
 if not login_status:
     print_error('Failed to login')
     exit(-2)
+
+print(colorama.Fore.GREEN, 'Success')
 
 if not os.path.exists(args.path):
     print(colorama.Fore.YELLOW + 'Path "%s" does not exist. Creating...' % args.path)
@@ -97,7 +106,10 @@ for track in playlist['tracks']:
     filename = create_filename(track)
     filepath = os.path.join(args.path, filename)
     if os.path.exists(filepath):
-        delete_list.remove(filepath)
+        try:
+            delete_list.remove(filepath)
+        except KeyError:
+            pass
         continue
     download_list.append(track)
 
@@ -115,6 +127,15 @@ if len(delete_list):
             print(colorama.Fore.GREEN + 'Ok')
 
 
+def set_id3_tag(track, filepath):
+    audiofile = eyed3.load(filepath)
+    audiofile.initTag()
+    audiofile.tag._setArtist(track['track']['artist'])
+    audiofile.tag._setTitle(track['track']['title'])
+    audiofile.tag._setAlbum(track['track']['album'])
+    audiofile.tag.save()
+
+
 def download(track, chunk_size=1024):
     filepath = os.path.join(args.path, create_filename(track))
     url = api.get_stream_url(track['trackId'], device_id=device_id)
@@ -129,15 +150,11 @@ def download(track, chunk_size=1024):
                 f.flush()
         pbar.close()
 
-    #if 'artist' in track['track'] and 'title' in track['track']:
-    #    audiofile = eyed3.load(filepath)
-    #    audiofile.tag.artist = track['track']['artist']
-    #    audiofile.tag.title = track['track']['title']
-    #    audiofile.tag.album = track['track']['album']
-    #    audiofile.tag.save()
-    #else:
-    #    print(colorama.Fore.YELLOW + 'Artist and title not found for "%s"' % track['trackId'])
-    #    print(track)
+    if 'artist' in track['track'] and 'title' in track['track']:
+        set_id3_tag(track, filepath)
+    else:
+        print(colorama.Fore.YELLOW + 'Artist and title not found for "%s"' % track['trackId'])
+        print(track)
     return filepath
 
 
