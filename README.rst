@@ -2,16 +2,16 @@ gmusicsync
 **********
 
 .. image:: https://img.shields.io/pypi/status/gmusicsync.svg
-:target: https://github.com/sashgorokhov/gmusicsync
+    :target: https://github.com/sashgorokhov/gmusicsync
 
 .. image:: https://img.shields.io/pypi/pyversions/gmusicsync.svg
-:target: https://pypi.python.org/pypi/gmusicsync
+    :target: https://pypi.python.org/pypi/gmusicsync
 
 .. image:: https://badge.fury.io/py/gmusicsync.svg
-:target: https://badge.fury.io/py/gmusicsync
+    :target: https://badge.fury.io/py/gmusicsync
 
 .. image:: https://img.shields.io/github/license/sashgorokhov/gmusicsync.svg
-:target: https://raw.githubusercontent.com/sashgorokhov/gmusicsync/master/LICENSE
+    :target: https://raw.githubusercontent.com/sashgorokhov/gmusicsync/master/LICENSE
 
 Google Music playlist syncing to offline destination
 
