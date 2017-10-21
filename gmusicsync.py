@@ -99,7 +99,7 @@ def create_filename(track):
 print('Generating download and delete lists...')
 
 download_list = list()
-delete_list = {os.path.join(args.path, i) for i in os.listdir(args.path)}
+delete_list = {os.path.join(args.path, i) for i in os.listdir(args.path) if not os.path.isdir(os.path.join(args.path, i))}
 
 
 for track in playlist['tracks']:
