@@ -74,3 +74,4 @@ venv/
 ENV/
 .spyderproject
 .ropeproject
+.vscode

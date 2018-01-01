@@ -53,6 +53,10 @@ if not os.path.exists(args.path):
     print(colorama.Fore.YELLOW + 'Path "%s" does not exist. Creating...' % args.path)
     os.makedirs(args.path)
 
+print('Fetching user library...')
+library = api.get_all_songs()
+lib_dict = {song['id']: song for song in library}
+
 print('Fetching user playlists...')
 playlists = api.get_all_user_playlist_contents()
 
@@ -87,9 +91,11 @@ if device_id.startswith('0x'):
 
 print(colorama.Fore.GREEN + 'Using device_id: %s' % device_id)
 
+def create_tmp_filename(track):
+    return track['trackId'] + '.mp3'
 
 def create_filename(track):
-    if 'artist' not in track['track'] or 'title' not in track['track']:
+    if 'track' not in track or 'artist' not in track['track'] or 'title' not in track['track']:
         return track['trackId'] + '.mp3'
     filename = '{track[artist]} - {track[title]} [{track[album]}]'.format(track=track['track'])
     filename = re.sub('[^\w\-_\s\(\)\[\]]+', '', filename)
@@ -103,6 +109,8 @@ delete_list = {os.path.join(args.path, i) for i in os.listdir(args.path) if not 
 
 
 for track in playlist['tracks']:
+    if 'track' not in track:
+        track['track'] = lib_dict[track['trackId']]
     filename = create_filename(track)
     filepath = os.path.join(args.path, filename)
     if os.path.exists(filepath):
@@ -130,18 +138,39 @@ if len(delete_list):
 def set_id3_tag(track, filepath):
     audiofile = eyed3.load(filepath)
     audiofile.initTag()
-    audiofile.tag._setArtist(track['track']['artist'])
-    audiofile.tag._setTitle(track['track']['title'])
-    audiofile.tag._setAlbum(track['track']['album'])
+    if 'artist' in track['track']:
+        audiofile.tag.artist = track['track']['artist']
+    if 'title' in track['track']:
+        audiofile.tag.title = track['track']['title']
+    if 'album' in track['track']:
+        audiofile.tag.album = track['track']['album']
+    if 'albumArtist' in track['track']:
+        audiofile.tag.album_artist = track['track']['albumArtist']
+    if 'trackNumber' in track['track']:
+        audiofile.tag.track_num = track['track']['trackNumber']
+    if 'genre' in track['track']:
+        audiofile.tag.genre = track['track']['genre']
+    if 'lyrics' in track['track']:
+        audiofile.tag.lyrics = track['track']['lyrics']
+    if 'discNumber' in track['track']:
+        audiofile.tag.disc_num = track['track']['discNumber']
+    if 'albumArtRef' in track['track'] and not track['track']['albumArtRef'][0] is None and 'url' in track['track']['albumArtRef'][0]:
+        resp = requests.get(track['track']['albumArtRef'][0]['url'], stream=True)
+        if resp.status_code == 200:
+            imagedata = resp.raw.read()
+            audiofile.tag.images.set(3, imagedata, resp.headers['Content-Type'], u"cover")
+        else:
+            audiofile.tag.images.set(3, None, None, u"cover", track['track']['albumArtRef'][0]['url'])
     audiofile.tag.save()
 
 
 def download(track, chunk_size=1024):
+    tmpfilepath = os.path.join(args.path, create_tmp_filename(track))
     filepath = os.path.join(args.path, create_filename(track))
     url = api.get_stream_url(track['trackId'], device_id=device_id)
     r = requests.get(url, stream=True)
-    with open(filepath, 'wb') as f:
-        pbar = tqdm.tqdm(desc=os.path.split(filepath)[-1][:50], unit='B', unit_scale=True)
+    with open(tmpfilepath, 'wb') as f:
+        pbar = tqdm.tqdm(desc=os.path.split(tmpfilepath)[-1][:50], unit='B', unit_scale=True)
         pbar.total = int(r.headers['Content-Length'])
         for chunk in r.iter_content(chunk_size=chunk_size):
             pbar.update(chunk_size)
@@ -150,11 +179,12 @@ def download(track, chunk_size=1024):
                 f.flush()
         pbar.close()
 
-    if 'artist' in track['track'] and 'title' in track['track']:
-        set_id3_tag(track, filepath)
+    if 'track' in track:
+        set_id3_tag(track, tmpfilepath)
     else:
         print(colorama.Fore.YELLOW + 'Artist and title not found for "%s"' % track['trackId'])
         print(track)
+    os.rename(tmpfilepath, filepath)
     return filepath
 
 
